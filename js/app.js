@@ -1,3 +1,5 @@
+
+'use strict';
 var locations = [{
     title: "Caroline Springs",
     latitude: -37.745,
@@ -22,112 +24,13 @@ var locations = [{
 var locdisplay = [];
 var markers = [];
 var map;
-
-//Access four square API to display additional information about locations.
-
-var getApi = function(marker) {
-
-    var $windowContent = $('#content');
-    var lat = marker.position.lat();
-    var lon = marker.position.lng();
-
-
-    // the foursquare api url
-    var url = 'https://api.foursquare.com/v2/venues/search?client_id=' +
-        'VHGPTJAHMQJO0WZCY3O1YSSURJHFYZVAWD1ET3Q1ZKX1MKYL' +
-        '&client_secret=YXF1YBMF1GYDPEBAKRIZ5YFFGR1DN2MH1PWCS1VRFHISYWMX' +
-        '&v=20130815' + '&ll=' + lat + ',' +
-        lon + '&query=\'' + marker.title + '\'&limit=1';
-
-    $.getJSON(url, function(response) {
-
-        //place the data returned in variables and append this data to the info window
-
-        var venue = response.response.venues[0];
-        var venuePhone = venue.contact.formattedPhone;
-        var venueAddress = venue.location.formattedAddress;
-
-        if (venuePhone) {
-            $windowContent.append('<p>' + venuePhone + '</p>');
-        } else {
-            $windowContent.append('<p> Phone number not found</p>');
-        }
-
-        if (venueAddress) {
-            $windowContent.append('<p>' + venueAddress + '</p>');
-        } else {
-            $windowContent.append('<p> Address not found </p>');
-        }
-
-
-    }).error(function(e) {
-        $windowContent.text('Content could not be loaded');
-
-    });
-
-};
-
-
-
-
-var ViewModel = function() {
-
-    var self = this;
-    this.itemToSearch = ko.observable("");
-    self.loclist = ko.observableArray([]);
-    if (this.itemToSearch() == "") {
-        locdisplay = locations;
-        self.loclist(locations);
-    }
-
-    this.addSearch = function() {
-        locdisplay = [];
-        self.loclist([]);
-
-        if (this.itemToSearch() != "") {
-            for (var i = 0; i < 5; i++) {
-                var loctitle = locations[i].title;
-                if (loctitle.includes(this.itemToSearch())) {
-                    locdisplay.push(locations[i]);
-                    self.loclist.push(locations[i]);
-                }
-            }
-
-
-            initMap();
-
-
-
-        }
-
-    }.bind(this);
-
-    this.determineLocationClicked = function(clickedloc) {
-        var infowin = new google.maps.InfoWindow();
-        for (i = 0; i < markers.length; i++) {
-            if (clickedloc.title == markers[i].title) {
-                if (markers[i].getAnimation() !== null) {
-                    markers[i].setAnimation(null);
-                } else {
-                    markers[i].setAnimation(google.maps.Animation.BOUNCE);
-                    infowin.setContent(markers[i].title + "<div id='content'></div>");
-                    infowin.open(mapcanvas, markers[i]);
-                    getApi(markers[i]);
-                }
-            }
-        }
-    };
-
-};
-
-ko.applyBindings(new ViewModel());
-
+var infowin;  
+var venuecontent;
 
 
 
 function initMap() {
-    var infowindow = new google.maps.InfoWindow();
-    // Create a map object and specify the DOM element for display.
+    infowin = new google.maps.InfoWindow();
     map = new google.maps.Map(document.getElementById('mapcanvas'), {
         center: {
             lat: -37.8136,
@@ -161,13 +64,19 @@ function initMap() {
 
         marker.addListener('click', (function(markercopy) {
             return function() {
-                if (markercopy.getAnimation() !== null) {
+                markers.forEach(function(marker){
+                    marker.setAnimation(null);
+                });
+                if (markercopy.getAnimation()) {
                     markercopy.setAnimation(null);
                 } else {
                     markercopy.setAnimation(google.maps.Animation.BOUNCE);
-                    infowindow.setContent(markercopy.title + "<div id='content'></div>");
-                    infowindow.open(map, markercopy);
+                    infowin.open(map, markercopy);
+                    infowin.setContent("Loading data for " + markercopy.title);
+
                     getApi(markercopy);
+                    //infowin.setContent(markercopy.title + venuecontent);
+
                 }
             };
         })(marker));
@@ -178,6 +87,110 @@ function initMap() {
     });
 
 }
+
+
+//Access four square API to display additional information about locations.
+
+var getApi = function(marker) {
+
+    var lat = marker.position.lat();
+    var lon = marker.position.lng();
+
+
+    // the foursquare api url
+    var url = 'https://api.foursquare.com/v2/venues/search?client_id=' +
+        'VHGPTJAHMQJO0WZCY3O1YSSURJHFYZVAWD1ET3Q1ZKX1MKYL' +
+        '&client_secret=YXF1YBMF1GYDPEBAKRIZ5YFFGR1DN2MH1PWCS1VRFHISYWMX' +
+        '&v=20130815' + '&ll=' + lat + ',' +
+        lon + '&query=\'' + marker.title + '\'&limit=1';
+
+    $.getJSON(url, function(response) {
+
+        //place the data returned in variables and append this data to the info window
+
+        var venue = response.response.venues[0];
+        var venuePhone = venue.contact.formattedPhone;
+        var venueAddress = venue.location.formattedAddress;
+
+        if (venuePhone) {
+            var venuePhonecontent = venuePhone;
+        } else {
+            var venuePhonecontent = "Phone number not found";
+        }
+
+        if (venueAddress) {
+            var venueAddresscontent = venueAddress;
+        } else {
+            var venueAddresscontent = "Adress not found";
+        }
+
+
+
+        infowin.setContent("<p>" + marker.title + "<br />" + venuePhonecontent + "<br />" + venueAddresscontent + "</p>") ;
+
+    }).fail(function(e) {
+        infowin.setContent("Content could not be loaded. Please try again later") ;
+
+    });
+
+};
+
+
+
+
+var ViewModel = function() {
+
+    var self = this;
+    this.itemToSearch = ko.observable("");
+    self.loclist = ko.observableArray([]);
+    if (this.itemToSearch() == "") {
+        locdisplay = locations;
+        self.loclist(locations);
+    }
+
+    this.addSearch = function() {
+        locdisplay = [];
+        self.loclist([]);
+
+        if (this.itemToSearch() != "") {
+            for (var i = 0; i < 5; i++) {
+                var loctitle = locations[i].title;
+                if (loctitle.toLowerCase().includes(this.itemToSearch())) {
+                    locdisplay.push(locations[i]);
+                    self.loclist.push(locations[i]);
+                }
+            }
+
+
+        }
+
+    }.bind(this);
+
+    this.determineLocationClicked = function(clickedloc) {
+        for (var i = 0; i < markers.length; i++) {
+            markers[i].setAnimation(null);
+            if (clickedloc.title == markers[i].title) {
+                if (markers[i].getAnimation()) {
+                    markers[i].setAnimation(null);
+                } else {
+                    markers[i].setAnimation(google.maps.Animation.BOUNCE);
+
+                    infowin.open(mapcanvas, markers[i]);
+                    infowin.setContent("Loading data for " + markers[i].title);
+                    getApi(markers[i]);
+
+                }
+            }
+        }
+    };
+
+};
+
+ko.applyBindings(new ViewModel());
+
+
+
+
 
 function googleError() {
     alert("Error on loading google map");
