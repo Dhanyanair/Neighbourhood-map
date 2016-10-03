@@ -64,8 +64,8 @@ function initMap() {
 
         marker.addListener('click', (function(markercopy) {
             return function() {
-                markers.forEach(function(marker){
-                    marker.setAnimation(null);
+                markers.forEach(function(mark){
+                    mark.setAnimation(null);
                 });
                 if (markercopy.getAnimation()) {
                     markercopy.setAnimation(null);
@@ -111,19 +111,21 @@ var getApi = function(marker) {
         var venue = response.response.venues[0];
         var venuePhone = venue.contact.formattedPhone;
         var venueAddress = venue.location.formattedAddress;
-
+        /*
         if (venuePhone) {
             var venuePhonecontent = venuePhone;
         } else {
             var venuePhonecontent = "Phone number not found";
-        }
-
+        }*/
+        var venuePhonecontent = venuePhone || "Phone number not found";
+        /*
         if (venueAddress) {
             var venueAddresscontent = venueAddress;
         } else {
             var venueAddresscontent = "Adress not found";
-        }
+        }*/
 
+        var venueAddresscontent = venueAddress || "Adress not found";
 
 
         infowin.setContent("<p>" + marker.title + "<br />" + venuePhonecontent + "<br />" + venueAddresscontent + "</p>") ;
@@ -141,23 +143,29 @@ var getApi = function(marker) {
 var ViewModel = function() {
 
     var self = this;
-    this.itemToSearch = ko.observable("");
+    self.itemToSearch = ko.observable("");
     self.loclist = ko.observableArray([]);
-    if (this.itemToSearch() == "") {
+    if (self.itemToSearch() == "") {
         locdisplay = locations;
         self.loclist(locations);
     }
 
-    this.addSearch = function() {
+    self.addSearch = function() {
         locdisplay = [];
         self.loclist([]);
+        var loclength = locations.length;
+        var marklength = markers.length;
 
         if (this.itemToSearch() != "") {
-            for (var i = 0; i < 5; i++) {
+            for (var i = 0; i < marklength; i++) {
+                markers[i].setVisible(false);
+            }
+            for (var i = 0; i < loclength; i++) {
                 var loctitle = locations[i].title;
                 if (loctitle.toLowerCase().includes(this.itemToSearch())) {
                     locdisplay.push(locations[i]);
                     self.loclist.push(locations[i]);
+                    markers[i].setVisible(true);
                 }
             }
 
@@ -166,7 +174,7 @@ var ViewModel = function() {
 
     }.bind(this);
 
-    this.determineLocationClicked = function(clickedloc) {
+    self.determineLocationClicked = function(clickedloc) {
         for (var i = 0; i < markers.length; i++) {
             markers[i].setAnimation(null);
             if (clickedloc.title == markers[i].title) {
